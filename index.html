@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Tangent is an interactive maths lab. Drag, scrub and play with live animations that teach trigonometry, geometry and calculus." />
+    <meta name="theme-color" content="#0a0a0a" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <title>Tangent — Math you can touch</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#labs">Skip to the labs</a>
+
+    <header class="nav">
+      <div class="container nav-inner">
+        <a class="brand" href="#top" aria-label="Tangent home">
+          <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="14" cy="18" r="8.5" fill="none" stroke="currentColor" stroke-width="2.4" /><path d="M3 10.5 29 4" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /><circle cx="20.2" cy="12.4" r="3" fill="currentColor" /></svg>
+          <span>Tangent</span>
+        </a>
+        <nav class="nav-links" aria-label="Labs">
+          <a href="#trig">Trigonometry</a>
+          <a href="#geometry">Geometry</a>
+          <a href="#calculus">Calculus</a>
+        </nav>
+        <a class="progress-pill" href="#labs" title="Challenges completed">
+          <span class="progress-star" aria-hidden="true">★</span>
+          <span data-progress>0/0</span>
+          <span class="progress-bar" aria-hidden="true"><span></span></span>
+        </a>
+      </div>
+    </header>
+
+    <main id="top">
+      <!-- Hero -->
+      <section class="hero">
+        <div class="container hero-inner">
+          <div class="hero-copy">
+            <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> An interactive maths lab</p>
+            <h1>Math you can <span class="hl">touch.</span></h1>
+            <p class="hero-lede">
+              Formulas are just pictures that haven't started moving yet. Drag, scrub and play with live animations
+              that show <em>why</em> the maths works — then prove you've got it with challenges that check themselves.
+            </p>
+            <div class="hero-ctas">
+              <a class="btn btn-primary" href="#labs"><span>Start exploring</span> <span aria-hidden="true">→</span></a>
+              <a class="btn btn-ghost" href="#how">How it works</a>
+            </div>
+            <dl class="hero-stats">
+              <div><dt>3</dt><dd>hands-on labs</dd></div>
+              <div><dt data-total-challenges>12</dt><dd>self-checking challenges</dd></div>
+              <div><dt>0</dt><dd>sign-ups needed</dd></div>
+            </dl>
+          </div>
+          <div class="hero-visual">
+            <canvas class="hero-canvas" aria-label="Animated Lissajous curve"></canvas>
+            <span class="formula f1">sin²θ + cos²θ = 1</span>
+            <span class="formula f2">a² + b² = c²</span>
+            <span class="formula f3">∫ₐᵇ f(x) dx</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- How it works -->
+      <section class="how" id="how">
+        <div class="container">
+          <p class="section-kicker">How it works</p>
+          <h2 class="section-title">Play first. Name it later.</h2>
+          <div class="how-grid">
+            <article class="how-card">
+              <span class="how-num">01</span>
+              <h3>Play</h3>
+              <p>Anything <span class="yellow">yellow</span> can be dragged. Grab a point, slide a bound, scrub an animation.</p>
+            </article>
+            <article class="how-card">
+              <span class="how-num">02</span>
+              <h3>Notice</h3>
+              <p>Every number updates live, so you see cause and effect — what changes, and what never does.</p>
+            </article>
+            <article class="how-card">
+              <span class="how-num">03</span>
+              <h3>Explain</h3>
+              <p>Each lab ends with “Try this” challenges. They tick themselves off the moment you nail them.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Labs -->
+      <section class="labs" id="labs">
+        <div class="container">
+          <p class="section-kicker">The labs</p>
+          <h2 class="section-title">Three concepts, three animations.</h2>
+          <div class="lab-index">
+            <a class="lab-card" href="#trig">
+              <span class="lab-card-num">01 · Trigonometry</span>
+              <strong>The unit circle draws the sine wave</strong>
+              <span class="lab-card-meta">Angles · radians · sin, cos, tan</span>
+            </a>
+            <a class="lab-card" href="#geometry">
+              <span class="lab-card-num">02 · Geometry</span>
+              <strong>Seeing why a² + b² = c²</strong>
+              <span class="lab-card-meta">Areas · proof by rearrangement</span>
+            </a>
+            <a class="lab-card" href="#calculus">
+              <span class="lab-card-num">03 · Calculus</span>
+              <strong>Area under a curve, one rectangle at a time</strong>
+              <span class="lab-card-meta">Riemann sums · integrals · limits</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Lab 01: Trigonometry -->
+        <article class="lab" id="trig">
+          <div class="container">
+            <header class="lab-head">
+              <span class="lab-num" aria-hidden="true">01</span>
+              <div>
+                <p class="eyebrow">Trigonometry</p>
+                <h2>The unit circle draws the sine wave</h2>
+                <p class="lab-lede">
+                  A point runs round a circle of radius 1. Its <b class="yellow">height</b> is sin θ and its
+                  <b>horizontal position</b> is cos θ. Unroll that height over time and you get a wave.
+                </p>
+              </div>
+            </header>
+
+            <div class="lab-body">
+              <div class="stage">
+                <canvas class="lab-canvas ratio-trig" aria-label="Unit circle with sine and cosine waves. Drag the yellow point to change the angle."></canvas>
+                <div class="controls">
+                  <button class="btn btn-primary btn-sm" data-action="play" aria-pressed="true"><span>Pause</span></button>
+                  <label class="slider">
+                    <span>Angle θ</span>
+                    <input type="range" name="angle" min="0" max="359" step="1" value="30" />
+                  </label>
+                  <label class="slider">
+                    <span>Speed</span>
+                    <input type="range" name="speed" min="0.25" max="3" step="0.25" value="1" />
+                  </label>
+                  <div class="chips" role="group" aria-label="Show curves">
+                    <label class="chip chip-yellow"><input type="checkbox" name="sin" checked /><span>sin</span></label>
+                    <label class="chip chip-white"><input type="checkbox" name="cos" checked /><span>cos</span></label>
+                    <label class="chip chip-gray"><input type="checkbox" name="tan" /><span>tan</span></label>
+                    <label class="chip"><input type="checkbox" name="snap" /><span>snap 15°</span></label>
+                  </div>
+                </div>
+              </div>
+
+              <aside class="panel">
+                <dl class="readouts">
+                  <div><dt>θ</dt><dd data-out="deg">30.0°</dd></div>
+                  <div><dt>radians</dt><dd data-out="rad">π/6</dd></div>
+                  <div class="r-yellow"><dt>sin θ</dt><dd data-out="sin">0.500</dd></div>
+                  <div><dt>cos θ</dt><dd data-out="cos">0.866</dd></div>
+                  <div class="r-gray"><dt>tan θ</dt><dd data-out="tan">0.577</dd></div>
+                  <div><dt>sin² + cos²</dt><dd data-out="sum">1.000</dd></div>
+                </dl>
+                <div class="key-idea">
+                  <h3>Key idea</h3>
+                  <p>
+                    The radius is always 1, so by Pythagoras <code>sin²θ + cos²θ = 1</code> — for every angle. Watch that
+                    last readout: it never moves. And because the point comes back round every 2π, the wave repeats.
+                  </p>
+                </div>
+                <div class="challenges">
+                  <h3>Try this</h3>
+                  <ul data-challenges></ul>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </article>
+
+        <!-- Lab 02: Geometry -->
+        <article class="lab" id="geometry">
+          <div class="container">
+            <header class="lab-head">
+              <span class="lab-num" aria-hidden="true">02</span>
+              <div>
+                <p class="eyebrow">Geometry</p>
+                <h2>Seeing why a² + b² = c²</h2>
+                <p class="lab-lede">
+                  Build a square on each side of a right triangle. The two small squares always have exactly the same
+                  total area as the big one. Then slide four triangles around to see <em>why</em>.
+                </p>
+              </div>
+            </header>
+
+            <div class="lab-body">
+              <div class="stage">
+                <canvas class="lab-canvas ratio-geo" aria-label="A right triangle with squares on each side, and a rearrangement proof. Drag the yellow corners to resize the triangle."></canvas>
+                <div class="controls">
+                  <button class="btn btn-primary btn-sm" data-action="rearrange"><span>Rearrange</span></button>
+                  <label class="slider">
+                    <span>Proof</span>
+                    <input type="range" name="proof" min="0" max="1" step="0.001" value="0" />
+                  </label>
+                  <label class="slider">
+                    <span>Leg a <output data-out="a-val">2.0</output></span>
+                    <input type="range" name="a" min="1" max="9" step="0.1" value="2" />
+                  </label>
+                  <label class="slider">
+                    <span>Leg b <output data-out="b-val">3.0</output></span>
+                    <input type="range" name="b" min="1" max="9" step="0.1" value="3" />
+                  </label>
+                </div>
+              </div>
+
+              <aside class="panel">
+                <dl class="readouts">
+                  <div class="r-yellow"><dt>a</dt><dd data-out="a">2.0</dd></div>
+                  <div class="r-pale"><dt>b</dt><dd data-out="b">3.0</dd></div>
+                  <div class="r-yellow"><dt>a²</dt><dd data-out="a2">4.00</dd></div>
+                  <div class="r-pale"><dt>b²</dt><dd data-out="b2">9.00</dd></div>
+                  <div><dt>c² = a² + b²</dt><dd data-out="c2">13.00</dd></div>
+                  <div><dt>c = √(a² + b²)</dt><dd data-out="c">3.606</dd></div>
+                </dl>
+                <div class="key-idea">
+                  <h3>Key idea</h3>
+                  <p>
+                    Both pictures on the right are the same big square holding the same four triangles. Whatever is
+                    left uncovered must have the same area each time — first it's <code>c²</code>, then it's
+                    <code>a² + b²</code>. That's the whole proof.
+                  </p>
+                </div>
+                <div class="challenges">
+                  <h3>Try this</h3>
+                  <ul data-challenges></ul>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </article>
+
+        <!-- Lab 03: Calculus -->
+        <article class="lab" id="calculus">
+          <div class="container">
+            <header class="lab-head">
+              <span class="lab-num" aria-hidden="true">03</span>
+              <div>
+                <p class="eyebrow">Calculus</p>
+                <h2>Area under a curve, one rectangle at a time</h2>
+                <p class="lab-lede">
+                  Curved areas are hard; rectangles are easy. Chop the region into <i>n</i> thin strips, add them up,
+                  and let <i>n</i> grow. The limit of that sum is the <b class="yellow">integral</b>.
+                </p>
+              </div>
+            </header>
+
+            <div class="lab-body">
+              <div class="stage">
+                <div class="chips chips-top" role="radiogroup" aria-label="Function">
+                  <span class="chips-label">f(x) =</span>
+                  <label class="chip"><input type="radio" name="fn" value="square" checked /><span>x²</span></label>
+                  <label class="chip"><input type="radio" name="fn" value="sine" /><span>sin x + 1</span></label>
+                  <label class="chip"><input type="radio" name="fn" value="sqrt" /><span>√x</span></label>
+                  <label class="chip"><input type="radio" name="fn" value="recip" /><span>1/x</span></label>
+                  <label class="chip"><input type="radio" name="fn" value="cubic" /><span>x³ − 3x</span></label>
+                </div>
+                <canvas class="lab-canvas ratio-calc" aria-label="Graph of a function with rectangles approximating the area under it. Drag the a and b markers to change the interval."></canvas>
+                <div class="controls">
+                  <button class="btn btn-primary btn-sm" data-action="animate"><span>Animate</span></button>
+                  <label class="slider">
+                    <span>Rectangles n <output data-out="n-val">6</output></span>
+                    <input type="range" name="n" min="1" max="100" step="1" value="6" />
+                  </label>
+                  <div class="chips" role="radiogroup" aria-label="Method">
+                    <label class="chip"><input type="radio" name="method" value="left" checked /><span>Left</span></label>
+                    <label class="chip"><input type="radio" name="method" value="right" /><span>Right</span></label>
+                    <label class="chip"><input type="radio" name="method" value="mid" /><span>Midpoint</span></label>
+                    <label class="chip"><input type="radio" name="method" value="trap" /><span>Trapezoid</span></label>
+                  </div>
+                </div>
+              </div>
+
+              <aside class="panel">
+                <dl class="readouts">
+                  <div class="r-wide"><dt>interval [a, b]</dt><dd data-out="bounds">[0.00, 3.00]</dd></div>
+                  <div><dt>strips n</dt><dd data-out="n">6</dd></div>
+                  <div><dt>width Δx</dt><dd data-out="dx">0.5000</dd></div>
+                  <div class="r-yellow"><dt>Σ f(xᵢ)·Δx</dt><dd data-out="approx">—</dd></div>
+                  <div><dt>exact ∫ f(x) dx</dt><dd data-out="exact">—</dd></div>
+                  <div class="r-wide"><dt>error</dt><dd data-out="error">—</dd></div>
+                </dl>
+                <div class="spark-wrap">
+                  <p class="spark-title">Approximation as n grows</p>
+                  <canvas class="spark" aria-label="Line chart of the Riemann sum approaching the exact value as n increases"></canvas>
+                </div>
+                <div class="key-idea">
+                  <h3>Key idea</h3>
+                  <p>
+                    <code>∫ₐᵇ f(x) dx = lim<sub>n→∞</sub> Σ f(xᵢ)·Δx</code>. Area below the x-axis counts as
+                    <em>negative</em> — hover a strip to see its signed area.
+                  </p>
+                </div>
+                <div class="challenges">
+                  <h3>Try this</h3>
+                  <ul data-challenges></ul>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- Closing CTA -->
+      <section class="cta">
+        <div class="container cta-inner">
+          <h2>Every formula is a picture <span class="hl">waiting to move.</span></h2>
+          <p>Finished all <span data-total-challenges>12</span> challenges? Try explaining one lab to a friend — teaching is the final boss.</p>
+          <a class="btn btn-primary" href="#trig"><span>Back to the first lab</span> <span aria-hidden="true">↑</span></a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer-inner">
+        <span class="brand brand-sm">
+          <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="14" cy="18" r="8.5" fill="none" stroke="currentColor" stroke-width="2.4" /><path d="M3 10.5 29 4" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /><circle cx="20.2" cy="12.4" r="3" fill="currentColor" /></svg>
+          <span>Tangent</span>
+        </span>
+        <span class="footer-note">A Build Fast with AI project · Built with Vite</span>
+        <button class="link-btn" data-action="reset-progress">Reset challenge progress</button>
+      </div>
+    </footer>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
