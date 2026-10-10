@@ -1,18 +1,16 @@
-// Lab 03 — Calculus: approximate the area under a curve with rectangles
+// Lab 03: Calculus. Approximate the area under a curve with rectangles
 // (Riemann sums) and watch the approximation converge to the exact integral.
 
 import {
-  COLORS, MONO, binder, clamp, dot, drawGrid, fmt, line,
-  pointerPos, runWhenVisible, setupCanvas, text,
+  COLORS, clamp, dot, drawPaper, fmt, labShell, line, pointerPos, prefersReducedMotion, text,
 } from '../lib/canvas.js';
-import { createChallenges } from '../challenges.js';
 
-const FUNCTIONS = {
-  square: { f: (x) => x * x, F: (x) => (x * x * x) / 3, view: [-0.6, 3.6, -1, 10], range: [0, 3], domain: [-0.6, 3.6] },
-  sine: { f: (x) => Math.sin(x) + 1, F: (x) => x - Math.cos(x), view: [-0.5, 7, -0.6, 2.6], range: [0, Math.PI * 1.5], domain: [-0.5, 7] },
-  sqrt: { f: Math.sqrt, F: (x) => (2 / 3) * Math.pow(x, 1.5), view: [-0.4, 5, -0.4, 2.6], range: [0, 4], domain: [0, 5] },
-  recip: { f: (x) => 1 / x, F: Math.log, view: [-0.3, 5, -0.4, 4.2], range: [0.5, 4], domain: [0.25, 5] },
-  cubic: { f: (x) => x * x * x - 3 * x, F: (x) => (x ** 4) / 4 - 1.5 * x * x, view: [-2.4, 2.4, -4, 4], range: [-1, 2], domain: [-2.4, 2.4] },
+export const FUNCTIONS = {
+  square: { label: 'x²', f: (x) => x * x, F: (x) => (x * x * x) / 3, view: [-0.6, 3.6, -1, 10], range: [0, 3], domain: [-0.6, 3.6] },
+  sine: { label: 'sin x + 1', f: (x) => Math.sin(x) + 1, F: (x) => x - Math.cos(x), view: [-0.5, 7, -0.6, 2.6], range: [0, Math.PI * 1.5], domain: [-0.5, 7] },
+  sqrt: { label: '√x', f: Math.sqrt, F: (x) => (2 / 3) * Math.pow(x, 1.5), view: [-0.4, 5, -0.4, 2.6], range: [0, 4], domain: [0, 5] },
+  recip: { label: '1/x', f: (x) => 1 / x, F: Math.log, view: [-0.3, 5, -0.4, 4.2], range: [0.5, 4], domain: [0.25, 5] },
+  cubic: { label: 'x³ − 3x', f: (x) => x * x * x - 3 * x, F: (x) => (x ** 4) / 4 - 1.5 * x * x, view: [-2.4, 2.4, -4, 4], range: [-1, 2], domain: [-2.4, 2.4] },
 };
 
 const METHODS = {
@@ -21,11 +19,12 @@ const METHODS = {
   mid: (f, x, dx) => f(x + dx / 2),
   trap: (f, x, dx) => (f(x) + f(x + dx)) / 2,
 };
+export const METHOD_LABELS = { left: 'Left', right: 'Right', mid: 'Midpoint', trap: 'Trapezoid' };
 
 const MAX_N = 100;
 const ANIM_SECONDS = 5;
 
-function riemann(fn, method, a, b, n) {
+export function riemann(fn, method, a, b, n) {
   const dx = (b - a) / n;
   const h = METHODS[method];
   let sum = 0;
@@ -40,26 +39,7 @@ function niceStep(span) {
   return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * pow;
 }
 
-export function mountRiemann(root) {
-  const $ = (s) => root.querySelector(s);
-  const canvas = $('canvas.lab-canvas');
-  const spark = $('canvas.spark');
-  const view = setupCanvas(canvas);
-  const sparkView = setupCanvas(spark);
-  const { ctx } = view;
-
-  const nInput = $('input[name="n"]');
-  const animBtn = $('[data-action="animate"]');
-  const set = binder({
-    n: $('[data-out="n"]'),
-    nVal: $('[data-out="n-val"]'),
-    dx: $('[data-out="dx"]'),
-    approx: $('[data-out="approx"]'),
-    exact: $('[data-out="exact"]'),
-    error: $('[data-out="error"]'),
-    bounds: $('[data-out="bounds"]'),
-  });
-
+export function createRiemann(canvas, { preview = false, onFrame } = {}) {
   const state = {
     fnId: 'square',
     method: 'left',
@@ -71,16 +51,36 @@ export function mountRiemann(root) {
     anim: null,
     animDone: false,
     movedBounds: false,
+    clock: 0,
+    // derived each frame
+    approx: 0, exact: 9, err: 0, rel: 0,
   };
-
-  const challenges = createChallenges($('[data-challenges]'), 'calc', [
-    { id: 'left5', text: 'On <b>x²</b> with the <b>Left</b> rule, push the error below <b>5%</b>. How many rectangles did it take?', test: (s) => s.fnId === 'square' && s.method === 'left' && s.rel < 0.05 },
-    { id: 'mid', text: 'Switch to <b>Midpoint</b> and get under <b>1% error</b> using <b>10 rectangles or fewer</b>.', test: (s) => s.method === 'mid' && s.n <= 10 && s.rel < 0.01 },
-    { id: 'zero', text: 'Pick <b>x³ − 3x</b> and drag <b>a</b> and <b>b</b> until the exact area is <b>0</b>. Where did the area go?', test: (s) => s.fnId === 'cubic' && s.movedBounds && Math.abs(s.exact) < 0.05 },
-    { id: 'anim', text: 'Press <b>Animate</b> and watch the sum home in on the exact area.', test: (s) => s.animDone },
-  ]);
-
   const fn = () => FUNCTIONS[state.fnId];
+
+  const shell = labShell(canvas, (dt) => {
+    if (preview) {
+      if (!prefersReducedMotion()) state.clock += dt;
+      else state.clock = 5;
+      const c = state.clock % 6;
+      state.n = c < 4.5 ? Math.max(1, Math.round(1 + 47 * Math.pow(c / 4.5, 2))) : 48;
+    } else if (state.anim) {
+      state.anim.t += dt;
+      const p = Math.min(state.anim.t / ANIM_SECONDS, 1);
+      state.n = Math.max(1, Math.round(1 + (MAX_N - 1) * p * p));
+      if (p >= 1) {
+        state.anim = null;
+        state.animDone = true;
+      }
+    }
+    const F = fn();
+    state.approx = riemann(F, state.method, state.a, state.b, state.n);
+    state.exact = F.F(state.b) - F.F(state.a);
+    state.err = Math.abs(state.approx - state.exact);
+    state.rel = Math.abs(state.exact) > 1e-6 ? state.err / Math.abs(state.exact) : Infinity;
+    draw();
+    onFrame?.(state);
+  });
+  const { view, ctx } = shell;
 
   function layout() {
     const W = view.width;
@@ -106,16 +106,15 @@ export function mountRiemann(root) {
     const { a, b, n, method } = state;
     const dx = (b - a) / n;
 
-    ctx.clearRect(0, 0, W, H);
-    drawGrid(ctx, W, H, 28);
+    drawPaper(ctx, W, H);
 
-    // Ticks
     const xs = niceStep(x1 - x0);
     const ys = niceStep(y1 - y0);
     for (let x = Math.ceil(x0 / xs) * xs; x <= x1; x += xs) {
       if (Math.abs(x) < 1e-9) continue;
       text(ctx, fmt(x, xs < 1 ? 1 : 0), X(x), B + 30, { color: COLORS.muted, size: 11, align: 'center' });
-      ctx.strokeStyle = COLORS.axis;
+      ctx.strokeStyle = COLORS.ink;
+      ctx.lineWidth = 1.5;
       line(ctx, X(x), Y(0) - 3, X(x), Y(0) + 3);
     }
     for (let y = Math.ceil(y0 / ys) * ys; y <= y1; y += ys) {
@@ -123,9 +122,8 @@ export function mountRiemann(root) {
       text(ctx, fmt(y, ys < 1 ? 1 : 0), L - 8, Y(y) + 4, { color: COLORS.muted, size: 11, align: 'right' });
     }
 
-    // Axes
-    ctx.strokeStyle = COLORS.axis;
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = COLORS.ink;
+    ctx.lineWidth = 1.5;
     line(ctx, L, Y(0), R, Y(0));
     if (x0 < 0 && x1 > 0) line(ctx, X(0), T, X(0), B);
 
@@ -156,24 +154,24 @@ export function mountRiemann(root) {
       }
       ctx.closePath();
       ctx.fillStyle = h >= 0
-        ? (hovered ? 'rgba(255,212,0,0.85)' : 'rgba(255,212,0,0.5)')
-        : (hovered ? 'rgba(244,244,239,0.6)' : 'rgba(244,244,239,0.22)');
+        ? (hovered ? 'rgba(77,124,255,0.7)' : 'rgba(77,124,255,0.34)')
+        : (hovered ? 'rgba(224,83,61,0.55)' : 'rgba(224,83,61,0.24)');
       ctx.fill();
       if (outline) {
-        ctx.strokeStyle = h >= 0 ? COLORS.yellow : COLORS.white;
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = h >= 0 ? COLORS.blue : COLORS.red;
+        ctx.lineWidth = 1.25;
         ctx.stroke();
       }
-      // Mark the sample point that sets each rectangle's height
       if (n <= 24 && method !== 'trap') {
         const sx = method === 'left' ? xl : method === 'right' ? xr : xl + dx / 2;
-        dot(ctx, X(sx), Y(h), 3, COLORS.bg, h >= 0 ? COLORS.yellow : COLORS.white, 1.5);
+        dot(ctx, X(sx), Y(h), 3, COLORS.card, COLORS.ink, 1.5);
       }
     }
 
     // The curve
-    ctx.strokeStyle = COLORS.white;
+    ctx.strokeStyle = COLORS.ink;
     ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
     ctx.beginPath();
     let pen = false;
     const [d0, d1] = F.domain;
@@ -183,8 +181,7 @@ export function mountRiemann(root) {
         pen = false;
         continue;
       }
-      const y = F.f(x);
-      const py = clamp(Y(y), T - 200, B + 200);
+      const py = clamp(Y(F.f(x)), T - 200, B + 200);
       if (pen) ctx.lineTo(px, py);
       else ctx.moveTo(px, py);
       pen = true;
@@ -192,22 +189,32 @@ export function mountRiemann(root) {
     ctx.stroke();
     ctx.restore();
 
-    // Bounds a and b
+    // Bounds a and b: square tags with a hard shadow, like the UI buttons
     [['a', a], ['b', b]].forEach(([key, v]) => {
       const x = X(v);
-      const active = state.drag === key || state.hover?.kind === key;
+      const active = !preview && (state.drag === key || state.hover?.kind === key);
       ctx.save();
       ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = active ? COLORS.yellow : 'rgba(255,212,0,0.55)';
+      ctx.strokeStyle = active ? COLORS.blue : 'rgba(31,29,26,0.45)';
       ctx.lineWidth = 1.5;
       line(ctx, x, T, x, B);
       ctx.restore();
-      if (active) dot(ctx, x, B, 15, 'rgba(255,212,0,0.22)', null);
-      dot(ctx, x, B, 10, COLORS.yellow, COLORS.bg, 2);
-      text(ctx, key, x, B + 4, { color: COLORS.bg, size: 12, align: 'center', weight: 700 });
+      const s = 18;
+      if (active) {
+        ctx.fillStyle = 'rgba(77,124,255,0.22)';
+        ctx.fillRect(x - s / 2 - 6, B - s / 2 - 6, s + 12, s + 12);
+      }
+      ctx.fillStyle = COLORS.ink;
+      ctx.fillRect(x - s / 2 + 2, B - s / 2 + 2, s, s);
+      ctx.fillStyle = COLORS.blue;
+      ctx.fillRect(x - s / 2, B - s / 2, s, s);
+      ctx.strokeStyle = COLORS.ink;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x - s / 2, B - s / 2, s, s);
+      text(ctx, key, x, B + 4, { color: '#fff', size: 12, align: 'center', weight: 600 });
     });
 
-    // Tooltip for the hovered rectangle
+    // Tooltip for the hovered strip
     if (state.hover?.kind === 'rect' && !state.drag) {
       const i = state.hover.i;
       const xl = a + i * dx;
@@ -218,113 +225,16 @@ export function mountRiemann(root) {
       let bx = X(xl + dx / 2) + 12;
       if (bx + bw > R) bx = X(xl + dx / 2) - bw - 12;
       const by = T + 8;
-      ctx.fillStyle = 'rgba(10,10,10,0.92)';
-      ctx.strokeStyle = 'rgba(255,212,0,0.6)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.roundRect(bx, by, bw, bh, 8);
-      ctx.fill();
-      ctx.stroke();
-      lines.forEach((l, k) => text(ctx, l, bx + 10, by + 20 + k * 16, { color: k === 3 ? COLORS.yellow : COLORS.text, size: 11 }));
+      ctx.fillStyle = COLORS.ink;
+      ctx.fillRect(bx + 4, by + 4, bw, bh);
+      ctx.fillStyle = COLORS.card;
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = COLORS.ink;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(bx, by, bw, bh);
+      lines.forEach((l, k) => text(ctx, l, bx + 10, by + 20 + k * 16, { color: k === 3 ? (h >= 0 ? COLORS.blue : COLORS.red) : COLORS.ink, size: 11, weight: k === 3 ? 600 : 400 }));
     }
   }
-
-  let sparkKey = '';
-  function drawSpark(exact) {
-    const key = `${state.fnId}|${state.method}|${state.a}|${state.b}|${state.n}|${sparkView.version}`;
-    if (key === sparkKey) return;
-    sparkKey = key;
-    const c = sparkView.ctx;
-    const W = sparkView.width;
-    const H = sparkView.height;
-    const F = fn();
-    const vals = [];
-    for (let n = 1; n <= MAX_N; n++) vals.push(riemann(F, state.method, state.a, state.b, n));
-    let lo = Math.min(exact, ...vals);
-    let hi = Math.max(exact, ...vals);
-    const padV = (hi - lo) * 0.15 || 0.5;
-    lo -= padV;
-    hi += padV;
-    const X = (n) => 8 + ((n - 1) / (MAX_N - 1)) * (W - 16);
-    const Y = (v) => H - 18 - ((v - lo) / (hi - lo)) * (H - 30);
-
-    c.clearRect(0, 0, W, H);
-    c.save();
-    c.setLineDash([4, 4]);
-    c.strokeStyle = 'rgba(244,244,239,0.5)';
-    c.lineWidth = 1;
-    line(c, 8, Y(exact), W - 8, Y(exact));
-    c.restore();
-
-    c.strokeStyle = COLORS.yellow;
-    c.lineWidth = 2;
-    c.beginPath();
-    vals.forEach((v, i) => (i ? c.lineTo(X(i + 1), Y(v)) : c.moveTo(X(1), Y(v))));
-    c.stroke();
-    dot(c, X(state.n), Y(vals[state.n - 1]), 4.5, COLORS.yellow, COLORS.bg, 2);
-
-    text(c, 'exact', W - 8, Y(exact) - 6, { color: COLORS.muted, size: 10, align: 'right', font: MONO });
-    text(c, 'n = 1', 8, H - 4, { color: COLORS.muted, size: 10, font: MONO });
-    text(c, `n = ${MAX_N}`, W - 8, H - 4, { color: COLORS.muted, size: 10, align: 'right', font: MONO });
-  }
-
-  function update(dt) {
-    if (state.anim) {
-      state.anim.t += dt;
-      const p = Math.min(state.anim.t / ANIM_SECONDS, 1);
-      state.n = Math.max(1, Math.round(1 + (MAX_N - 1) * p * p));
-      if (p >= 1) {
-        state.anim = null;
-        state.animDone = true;
-        animBtn.querySelector('span').textContent = 'Animate';
-      }
-    }
-
-    const { a, b, n } = state;
-    const F = fn();
-    const approx = riemann(F, state.method, a, b, n);
-    const exact = F.F(b) - F.F(a);
-    const err = Math.abs(approx - exact);
-    const rel = Math.abs(exact) > 1e-6 ? err / Math.abs(exact) : Infinity;
-
-    set('n', String(n));
-    set('nVal', String(n));
-    set('dx', fmt((b - a) / n, 4));
-    set('approx', fmt(approx, 4));
-    set('exact', fmt(exact, 4));
-    set('error', Number.isFinite(rel) ? `${fmt(err, 4)} (${(rel * 100).toFixed(2)}%)` : fmt(err, 4));
-    set('bounds', `[${fmt(a, 2)}, ${fmt(b, 2)}]`);
-    if (document.activeElement !== nInput) nInput.value = String(n);
-
-    drawSpark(exact);
-    challenges.check({ ...state, exact, rel });
-  }
-
-  // Controls
-  root.querySelectorAll('input[name="fn"]').forEach((el) =>
-    el.addEventListener('change', () => {
-      state.fnId = el.value;
-      [state.a, state.b] = FUNCTIONS[el.value].range;
-      state.movedBounds = false;
-    }),
-  );
-  root.querySelectorAll('input[name="method"]').forEach((el) =>
-    el.addEventListener('change', () => (state.method = el.value)),
-  );
-  nInput.addEventListener('input', () => {
-    state.anim = null;
-    animBtn.querySelector('span').textContent = 'Animate';
-    state.n = Number(nInput.value);
-  });
-  animBtn.addEventListener('click', () => {
-    if (state.anim) {
-      state.anim = null;
-      animBtn.querySelector('span').textContent = 'Animate';
-      return;
-    }
-    state.anim = { t: 0 };
-    animBtn.querySelector('span').textContent = 'Stop';
-  });
 
   // Pointer: drag the bounds, hover strips for details
   function hitTest(p) {
@@ -340,33 +250,85 @@ export function mountRiemann(root) {
     }
     return null;
   }
-  canvas.addEventListener('pointerdown', (e) => {
-    const hit = hitTest(pointerPos(canvas, e));
-    if (!hit || hit.kind === 'rect') return;
-    state.drag = hit.kind;
-    canvas.setPointerCapture(e.pointerId);
-  });
-  canvas.addEventListener('pointermove', (e) => {
-    const p = pointerPos(canvas, e);
-    if (state.drag) {
-      const G = layout();
-      const [d0, d1] = fn().domain;
-      const x = Math.round(G.invX(p.x) * 100) / 100;
-      if (state.drag === 'a') state.a = clamp(x, d0, state.b - 0.1);
-      else state.b = clamp(x, state.a + 0.1, d1);
-      state.movedBounds = true;
-      return;
-    }
-    state.hover = hitTest(p);
-    canvas.style.cursor = state.hover && state.hover.kind !== 'rect' ? 'ew-resize' : 'default';
-  });
-  const end = () => (state.drag = null);
-  canvas.addEventListener('pointerup', end);
-  canvas.addEventListener('pointercancel', end);
-  canvas.addEventListener('pointerleave', () => (state.hover = null));
+  if (!preview) {
+    shell.on('pointerdown', (e) => {
+      const hit = hitTest(pointerPos(canvas, e));
+      if (!hit || hit.kind === 'rect') return;
+      state.drag = hit.kind;
+      canvas.setPointerCapture(e.pointerId);
+    });
+    shell.on('pointermove', (e) => {
+      const p = pointerPos(canvas, e);
+      if (state.drag) {
+        const G = layout();
+        const [d0, d1] = fn().domain;
+        const x = Math.round(G.invX(p.x) * 100) / 100;
+        if (state.drag === 'a') state.a = clamp(x, d0, state.b - 0.1);
+        else state.b = clamp(x, state.a + 0.1, d1);
+        state.movedBounds = true;
+        return;
+      }
+      state.hover = hitTest(p);
+      canvas.style.cursor = state.hover && state.hover.kind !== 'rect' ? 'ew-resize' : 'default';
+    });
+    const end = () => (state.drag = null);
+    shell.on('pointerup', end);
+    shell.on('pointercancel', end);
+    shell.on('pointerleave', () => (state.hover = null));
+  }
 
-  runWhenVisible(root, (dt) => {
-    update(dt);
-    draw();
-  });
+  shell.start();
+
+  const setFn = (id) => {
+    state.fnId = id;
+    [state.a, state.b] = FUNCTIONS[id].range;
+    state.movedBounds = false;
+  };
+
+  const controls = [
+    {
+      id: 'fn', kind: 'chips', label: 'f(x) =',
+      options: Object.entries(FUNCTIONS).map(([value, f]) => ({ value, label: f.label })),
+      value: () => state.fnId,
+      set: setFn,
+    },
+    {
+      id: 'n', kind: 'range', label: 'rectangles n', min: 1, max: MAX_N, step: 1,
+      value: () => state.n, display: () => String(state.n),
+      set: (v) => {
+        state.anim = null;
+        state.n = v;
+      },
+    },
+    {
+      id: 'method', kind: 'chips', label: 'height from',
+      options: Object.entries(METHOD_LABELS).map(([value, label]) => ({ value, label })),
+      value: () => state.method,
+      set: (v) => (state.method = v),
+    },
+    {
+      id: 'animate', kind: 'button', primary: true,
+      label: () => (state.anim ? 'Stop' : 'Animate n → 100'),
+      press: () => (state.anim = state.anim ? null : { t: 0 }),
+    },
+  ];
+
+  return {
+    state,
+    controls,
+    header: () => {
+      const err = Number.isFinite(state.rel) ? `${(state.rel * 100).toFixed(1)}%` : fmt(state.err, 3);
+      return `Σ f(xᵢ)·Δx = <b>${fmt(state.approx, 3)}</b> · exact <b>${fmt(state.exact, 3)}</b> · error <b class="${(Number.isFinite(state.rel) ? state.rel : state.err) < 0.01 ? '' : 'warn'}">${err}</b>`;
+    },
+    preset: (p = {}) => {
+      if ('fnId' in p) setFn(p.fnId);
+      if ('a' in p) state.a = p.a;
+      if ('b' in p) state.b = p.b;
+      if ('n' in p) state.n = p.n;
+      if ('method' in p) state.method = p.method;
+      state.anim = null;
+      state.movedBounds = false;
+    },
+    destroy: shell.destroy,
+  };
 }

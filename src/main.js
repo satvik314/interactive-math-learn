@@ -1,29 +1,27 @@
 import './style.css';
-import { mountHero } from './hero.js';
-import { mountUnitCircle } from './labs/unitCircle.js';
-import { mountPythagoras } from './labs/pythagoras.js';
-import { mountRiemann } from './labs/riemann.js';
-import { onProgress, resetProgress } from './challenges.js';
+import { lessonById } from './lessons.js';
+import { touchStreak } from './progress.js';
+import { renderHome } from './screens/home.js';
+import { renderLesson } from './screens/lesson.js';
 
-mountHero(document.querySelector('.hero-canvas'));
-mountUnitCircle(document.getElementById('trig'));
-mountPythagoras(document.getElementById('geometry'));
-mountRiemann(document.getElementById('calculus'));
+// Hash routes:  #/  (course map) · #/learn/<lesson>  · #/play/<lesson>
+const app = document.getElementById('app');
+let cleanup = () => {};
 
-const progressCount = document.querySelector('[data-progress]');
-const progressBar = document.querySelector('.progress-bar span');
-onProgress((done, total) => {
-  progressCount.textContent = `${done}/${total}`;
-  progressBar.style.width = `${total ? (done / total) * 100 : 0}%`;
-  document.querySelectorAll('[data-total-challenges]').forEach((el) => (el.textContent = String(total)));
-});
+function route() {
+  cleanup();
+  const [view, id] = location.hash.replace(/^#\/?/, '').split('/');
+  const lesson = lessonById(id);
+  if ((view === 'learn' || view === 'play') && lesson) {
+    document.title = `${lesson.unit}: ${view === 'learn' ? 'Lesson' : 'Free play'} · Tangent`;
+    cleanup = renderLesson(app, lesson, view);
+  } else {
+    document.title = 'Tangent: math you can touch';
+    cleanup = renderHome(app);
+  }
+  window.scrollTo(0, 0);
+}
 
-document.querySelector('[data-action="reset-progress"]').addEventListener('click', resetProgress);
-
-// Highlight the nav link for the lab currently in view.
-const links = new Map([...document.querySelectorAll('.nav-links a')].map((a) => [a.getAttribute('href').slice(1), a]));
-const navObserver = new IntersectionObserver(
-  (entries) => entries.forEach((e) => links.get(e.target.id)?.classList.toggle('is-active', e.isIntersecting)),
-  { rootMargin: '-45% 0px -50% 0px' },
-);
-document.querySelectorAll('.lab').forEach((el) => navObserver.observe(el));
+touchStreak();
+window.addEventListener('hashchange', route);
+route();

@@ -1,20 +1,18 @@
-// Lab 02 — Geometry: the Pythagorean theorem, twice.
-// Left: a right triangle with a square on every side (drag the yellow corners).
-// Right: the classic rearrangement proof — four copies of the triangle slide
+// Lab 02: Geometry. The Pythagorean theorem, twice.
+// Left: a right triangle with a square on every side (drag the blue corners).
+// Right: the classic rearrangement proof. Four copies of the triangle slide
 // inside an (a+b)×(a+b) square, and the uncovered area turns from c² into a² + b².
 
 import {
-  COLORS, SANS, TAU, binder, clamp, dot, easeInOut, fmt, lerp,
-  pointerPos, runWhenVisible, setupCanvas, text,
+  COLORS, SANS, clamp, drawPaper, easeInOut, fmt, handle, labShell, lerp, pointerPos, prefersReducedMotion, text,
 } from '../lib/canvas.js';
-import { createChallenges } from '../challenges.js';
 
 const MIN = 1;
 const MAX = 9;
 const TITLE_H = 34;
 const FOOT_H = 34;
 const round1 = (v) => Math.round(v * 10) / 10;
-const isWhole = (v, tol = 0.001) => Math.abs(v - Math.round(v)) < tol;
+export const isWhole = (v, tol = 0.001) => Math.abs(v - Math.round(v)) < tol;
 
 const rotate = ([x, y], deg) => {
   const r = (deg * Math.PI) / 180;
@@ -23,30 +21,20 @@ const rotate = ([x, y], deg) => {
   return [x * c - y * s, x * s + y * c];
 };
 
-export function mountPythagoras(root) {
-  const $ = (s) => root.querySelector(s);
-  const canvas = $('canvas');
-  const view = setupCanvas(canvas);
-  const { ctx } = view;
+/** Preview loop: hold, rearrange, hold, put back. */
+function previewT(clock) {
+  const c = clock % 8;
+  if (c < 1.2) return 0;
+  if (c < 3.7) return (c - 1.2) / 2.5;
+  if (c < 5.5) return 1;
+  return 1 - (c - 5.5) / 2.5;
+}
 
-  const inputA = $('input[name="a"]');
-  const inputB = $('input[name="b"]');
-  const proofInput = $('input[name="proof"]');
-  const rearrangeBtn = $('[data-action="rearrange"]');
-  const set = binder({
-    a: $('[data-out="a"]'),
-    b: $('[data-out="b"]'),
-    a2: $('[data-out="a2"]'),
-    b2: $('[data-out="b2"]'),
-    c2: $('[data-out="c2"]'),
-    c: $('[data-out="c"]'),
-    aVal: $('[data-out="a-val"]'),
-    bVal: $('[data-out="b-val"]'),
-  });
-
+export function createPythagoras(canvas, { preview = false, onFrame } = {}) {
   const state = {
     a: 2,
     b: 3,
+    c: Math.hypot(2, 3),
     t: 0, // proof progress 0 → 1
     target: null, // where the proof animation is heading (null while scrubbing)
     drag: null, // 'a' | 'b'
@@ -54,14 +42,24 @@ export function mountPythagoras(root) {
     touched: false,
     cam: null, // smoothed camera for the left panel
     camVersion: -1,
+    clock: 0,
   };
 
-  const challenges = createChallenges($('[data-challenges]'), 'geo', [
-    { id: 'triple', text: 'Find a triangle where <b>a, b and c are all whole numbers</b> — a <i>Pythagorean triple</i>.', test: (s) => isWhole(s.a) && isWhole(s.b) && isWhole(s.c) },
-    { id: 'ten', text: 'Now find a whole-number triangle with <b>c = 10</b>.', test: (s) => isWhole(s.a) && isWhole(s.b) && Math.abs(s.c - 10) < 0.001 },
-    { id: 'iso', text: 'Make both legs equal. How does <b>c²</b> compare to <b>a²</b>?', test: (s) => s.touched && Math.abs(s.a - s.b) < 0.001 },
-    { id: 'proof', text: 'Play the <b>rearrangement proof</b> all the way to the end.', test: (s) => s.t >= 0.999 },
-  ]);
+  const shell = labShell(canvas, (dt) => {
+    if (preview) {
+      if (!prefersReducedMotion()) state.clock += dt;
+      else state.clock = 4;
+      state.t = previewT(state.clock);
+    } else if (state.target !== null) {
+      const dir = Math.sign(state.target - state.t);
+      state.t = clamp(state.t + dir * dt * 0.4, 0, 1);
+      if (state.t === state.target) state.target = null;
+    }
+    state.c = Math.hypot(state.a, state.b);
+    draw(dt);
+    onFrame?.(state);
+  });
+  const { view, ctx } = shell;
 
   function panels() {
     const W = view.width;
@@ -76,11 +74,13 @@ export function mountPythagoras(root) {
     const ih = P.h - TITLE_H - FOOT_H;
     const k = Math.min((P.w - 40) / (a + 2 * b), ih / (2 * a + b));
     // Bounding box in triangle units: x ∈ [-b, a+b], y ∈ [-a, a+b]
-    return {
-      k,
-      ox: P.x + P.w / 2 - (a / 2) * k,
-      oy: P.y + TITLE_H + ih / 2 + (b / 2) * k,
-    };
+    return { k, ox: P.x + P.w / 2 - (a / 2) * k, oy: P.y + TITLE_H + ih / 2 + (b / 2) * k };
+  }
+
+  function polygon(points) {
+    ctx.beginPath();
+    points.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
   }
 
   function drawSquare(S, p0, u, v, side, fill, gridColor) {
@@ -90,9 +90,7 @@ export function mountPythagoras(root) {
       [p0[0] + (u[0] + v[0]) * side, p0[1] + (u[1] + v[1]) * side],
       [p0[0] + v[0] * side, p0[1] + v[1] * side],
     ].map(([x, y]) => S(x, y));
-    ctx.beginPath();
-    corners.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-    ctx.closePath();
+    polygon(corners);
     ctx.fillStyle = fill;
     ctx.fill();
 
@@ -111,11 +109,9 @@ export function mountPythagoras(root) {
       ctx.lineTo(dx2, dy2);
     }
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(10,10,10,0.9)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    corners.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-    ctx.closePath();
+    ctx.strokeStyle = COLORS.ink;
+    ctx.lineWidth = 1.5;
+    polygon(corners);
     ctx.stroke();
 
     const cx = corners.reduce((s, p) => s + p[0], 0) / 4;
@@ -123,17 +119,17 @@ export function mountPythagoras(root) {
     return { cx, cy, px: Math.hypot(corners[1][0] - corners[0][0], corners[1][1] - corners[0][1]) };
   }
 
-  function areaLabel(sq, name, value) {
+  function areaLabel(sq, name, value, color) {
     if (sq.px < 26) return;
     const big = sq.px > 90;
-    text(ctx, name, sq.cx, sq.cy + (big ? -2 : 5), { color: COLORS.bg, size: big ? 22 : 15, font: SANS, align: 'center', weight: 700 });
-    if (big) text(ctx, fmt(value, 2), sq.cx, sq.cy + 18, { color: 'rgba(10,10,10,0.75)', size: 12, align: 'center', weight: 600 });
+    text(ctx, name, sq.cx, sq.cy + (big ? -2 : 5), { color, size: big ? 22 : 15, font: SANS, align: 'center', weight: 800 });
+    if (big) text(ctx, fmt(value, 2), sq.cx, sq.cy + 18, { color, size: 12, align: 'center', weight: 500 });
   }
 
-  function paleToYellow(x1, y1, x2, y2) {
+  function blueGradient(x1, y1, x2, y2) {
     const g = ctx.createLinearGradient(x1, y1, x2, y2);
-    g.addColorStop(0, COLORS.yellow);
-    g.addColorStop(1, COLORS.pale);
+    g.addColorStop(0, COLORS.blue);
+    g.addColorStop(1, COLORS.blueLight);
     return g;
   }
 
@@ -142,37 +138,30 @@ export function mountPythagoras(root) {
     const c = Math.hypot(a, b);
     const S = (x, y) => [cam.ox + x * cam.k, cam.oy - y * cam.k];
 
-    text(ctx, 'SQUARES ON EACH SIDE', P.x + 16, P.y + 22, { color: COLORS.muted, size: 11, weight: 600 });
+    text(ctx, 'SQUARES ON EACH SIDE', P.x + 14, P.y + 22, { color: COLORS.muted, size: 11, weight: 500 });
 
     ctx.save();
     ctx.beginPath();
     ctx.rect(P.x, P.y + TITLE_H - 8, P.w, P.h - TITLE_H + 8);
     ctx.clip();
 
-    const sqA = drawSquare(S, [0, 0], [1, 0], [0, -1], a, COLORS.yellow, 'rgba(10,10,10,0.22)');
-    const sqB = drawSquare(S, [0, 0], [0, 1], [-1, 0], b, COLORS.pale, 'rgba(10,10,10,0.18)');
+    const sqA = drawSquare(S, [0, 0], [1, 0], [0, -1], a, COLORS.blue, 'rgba(255,255,255,0.28)');
+    const sqB = drawSquare(S, [0, 0], [0, 1], [-1, 0], b, COLORS.blueLight, 'rgba(31,29,26,0.14)');
     const [hx1, hy1] = S(a, 0);
     const [hx2, hy2] = S(b, a + b);
-    const sqC = drawSquare(S, [a, 0], [-a / c, b / c], [b / c, a / c], c, paleToYellow(hx1, hy1, hx2, hy2), 'rgba(10,10,10,0.18)');
+    const sqC = drawSquare(S, [a, 0], [-a / c, b / c], [b / c, a / c], c, blueGradient(hx1, hy1, hx2, hy2), 'rgba(31,29,26,0.12)');
 
-    // The triangle itself
     const O = S(0, 0);
     const A = S(a, 0);
     const B = S(0, b);
-    ctx.beginPath();
-    ctx.moveTo(...O);
-    ctx.lineTo(...A);
-    ctx.lineTo(...B);
-    ctx.closePath();
-    ctx.fillStyle = COLORS.tri;
+    polygon([O, A, B]);
+    ctx.fillStyle = COLORS.paper;
     ctx.fill();
-    ctx.strokeStyle = COLORS.white;
+    ctx.strokeStyle = COLORS.ink;
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Right-angle marker
     const m = Math.min(12, cam.k * 0.35);
-    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(O[0] + m, O[1]);
@@ -180,32 +169,25 @@ export function mountPythagoras(root) {
     ctx.lineTo(O[0], O[1] - m);
     ctx.stroke();
 
-    areaLabel(sqA, 'a²', a * a);
-    areaLabel(sqB, 'b²', b * b);
-    areaLabel(sqC, 'c²', c * c);
+    areaLabel(sqA, 'a²', a * a, '#fff');
+    areaLabel(sqB, 'b²', b * b, COLORS.ink);
+    areaLabel(sqC, 'c²', c * c, COLORS.ink);
 
-    // Side labels inside the triangle
     if (cam.k * Math.min(a, b) > 34) {
-      text(ctx, 'a', (O[0] + A[0]) / 2, O[1] - 8, { color: COLORS.yellow, size: 13, align: 'center', weight: 600 });
-      text(ctx, 'b', O[0] + 8, (O[1] + B[1]) / 2 + 4, { color: COLORS.pale, size: 13, weight: 600 });
+      text(ctx, 'a', (O[0] + A[0]) / 2, O[1] - 8, { color: COLORS.ink, size: 13, align: 'center', weight: 600 });
+      text(ctx, 'b', O[0] + 8, (O[1] + B[1]) / 2 + 4, { color: COLORS.ink, size: 13, weight: 600 });
       const inX = ((A[0] + B[0]) / 2) * 0.82 + O[0] * 0.18;
       const inY = ((A[1] + B[1]) / 2) * 0.82 + O[1] * 0.18;
-      text(ctx, 'c', inX, inY + 4, { color: COLORS.white, size: 13, align: 'center', weight: 600 });
+      text(ctx, 'c', inX, inY + 4, { color: COLORS.red, size: 13, align: 'center', weight: 600 });
     }
 
-    // Drag handles
-    [['a', A], ['b', B]].forEach(([key, [x, y]]) => {
-      if (state.hover === key || state.drag === key) {
-        ctx.fillStyle = 'rgba(255,212,0,0.22)';
-        ctx.beginPath();
-        ctx.arc(x, y, 16, 0, TAU);
-        ctx.fill();
-      }
-      dot(ctx, x, y, 8, COLORS.yellow, COLORS.bg, 3);
-    });
+    if (!preview) {
+      handle(ctx, A[0], A[1], state.hover === 'a' || state.drag === 'a');
+      handle(ctx, B[0], B[1], state.hover === 'b' || state.drag === 'b');
+    }
     ctx.restore();
 
-    text(ctx, `${fmt(a * a, 2)} + ${fmt(b * b, 2)} = ${fmt(c * c, 2)}`, P.x + P.w / 2, P.y + P.h - 12, { color: COLORS.text, size: 12, align: 'center' });
+    text(ctx, `${fmt(a * a, 2)} + ${fmt(b * b, 2)} = ${fmt(c * c, 2)}`, P.x + P.w / 2, P.y + P.h - 12, { color: COLORS.ink, size: 12, align: 'center', weight: 500 });
   }
 
   function drawRight(P) {
@@ -218,17 +200,17 @@ export function mountPythagoras(root) {
     const S = (x, y) => [ox + x * k, oy - y * k];
     const t = state.t;
 
-    text(ctx, 'REARRANGEMENT PROOF', P.x + 16, P.y + 22, { color: COLORS.muted, size: 11, weight: 600 });
+    text(ctx, 'REARRANGEMENT PROOF', P.x + 14, P.y + 22, { color: COLORS.muted, size: 11, weight: 500 });
 
     // What isn't covered by triangles: c² before, a² + b² after.
     const [sx, sy] = S(0, s);
     ctx.globalAlpha = 1 - easeInOut(t);
-    ctx.fillStyle = paleToYellow(sx, sy + s * k, sx + s * k, sy);
+    ctx.fillStyle = blueGradient(sx, sy + s * k, sx + s * k, sy);
     ctx.fillRect(sx, sy, s * k, s * k);
     ctx.globalAlpha = easeInOut(t);
-    ctx.fillStyle = COLORS.yellow;
+    ctx.fillStyle = COLORS.blue;
     ctx.fillRect(...S(0, a), a * k, a * k);
-    ctx.fillStyle = COLORS.pale;
+    ctx.fillStyle = COLORS.blueLight;
     ctx.fillRect(...S(a, s), b * k, b * k);
     ctx.globalAlpha = 1;
 
@@ -244,48 +226,41 @@ export function mountPythagoras(root) {
       const local = tri.order < 0 ? 0 : easeInOut(clamp((t - tri.order * 0.25) / 0.5, 0, 1));
       const tx = lerp(tri.from[0], tri.to[0], local);
       const ty = lerp(tri.from[1], tri.to[1], local);
-      ctx.beginPath();
-      canon.forEach((p, i) => {
+      polygon(canon.map((p) => {
         const [rx, ry] = rotate(p, tri.rot);
-        const [X, Y] = S(rx + tx, ry + ty);
-        if (i) ctx.lineTo(X, Y);
-        else ctx.moveTo(X, Y);
-      });
-      ctx.closePath();
-      ctx.fillStyle = COLORS.tri;
+        return S(rx + tx, ry + ty);
+      }));
+      ctx.fillStyle = COLORS.ink;
       ctx.fill();
-      ctx.strokeStyle = 'rgba(255,212,0,0.75)';
+      ctx.strokeStyle = COLORS.paper;
       ctx.lineWidth = 1.5;
       ctx.stroke();
     });
 
-    // Outer (a+b) square
-    ctx.strokeStyle = COLORS.white;
+    ctx.strokeStyle = COLORS.ink;
     ctx.lineWidth = 2;
     ctx.strokeRect(sx, sy, s * k, s * k);
 
-    // Region labels
-    const label = (str, x, y, alpha, side) => {
+    const label = (str, x, y, alpha, side, color) => {
       if (alpha < 0.02 || side * k < 24) return;
       ctx.globalAlpha = alpha;
       const [X, Y] = S(x, y);
-      text(ctx, str, X, Y + 7, { color: COLORS.bg, size: side * k > 70 ? 22 : 15, font: SANS, align: 'center', weight: 700 });
+      text(ctx, str, X, Y + 7, { color, size: side * k > 70 ? 22 : 15, font: SANS, align: 'center', weight: 800 });
       ctx.globalAlpha = 1;
     };
-    label('c²', s / 2, s / 2, 1 - t, Math.hypot(a, b) * 0.7);
-    label('a²', a / 2, a / 2, t, a);
-    label('b²', a + b / 2, a + b / 2, t, b);
+    label('c²', s / 2, s / 2, 1 - t, Math.hypot(a, b) * 0.7, COLORS.ink);
+    label('a²', a / 2, a / 2, t, a, '#fff');
+    label('b²', a + b / 2, a + b / 2, t, b, COLORS.ink);
 
-    // Edge lengths along the bottom
     const [bx0, by0] = S(0, 0);
     const [bxa] = S(a, 0);
     const [bxs] = S(s, 0);
-    text(ctx, 'a', (bx0 + bxa) / 2, by0 + 15, { color: COLORS.yellow, size: 12, align: 'center', weight: 600 });
-    text(ctx, 'b', (bxa + bxs) / 2, by0 + 15, { color: COLORS.pale, size: 12, align: 'center', weight: 600 });
+    text(ctx, 'a', (bx0 + bxa) / 2, by0 + 15, { color: COLORS.ink, size: 12, align: 'center', weight: 600 });
+    text(ctx, 'b', (bxa + bxs) / 2, by0 + 15, { color: COLORS.ink, size: 12, align: 'center', weight: 600 });
 
     const eq = t < 0.5 ? '(a+b)² = c² + 4 triangles' : '(a+b)² = a² + b² + 4 triangles';
     ctx.globalAlpha = Math.abs(t - 0.5) * 2;
-    text(ctx, eq, P.x + P.w / 2, P.y + P.h - 10, { color: COLORS.text, size: 12, align: 'center' });
+    text(ctx, eq, P.x + P.w / 2, P.y + P.h - 10, { color: COLORS.ink, size: 12, align: 'center', weight: 500 });
     ctx.globalAlpha = 1;
   }
 
@@ -301,27 +276,22 @@ export function mountPythagoras(root) {
       state.camVersion = view.version;
     } else if (!state.drag) {
       const f = 1 - Math.exp(-dt * 10);
-      state.cam = {
-        k: lerp(state.cam.k, target.k, f),
-        ox: lerp(state.cam.ox, target.ox, f),
-        oy: lerp(state.cam.oy, target.oy, f),
-      };
+      state.cam = { k: lerp(state.cam.k, target.k, f), ox: lerp(state.cam.ox, target.ox, f), oy: lerp(state.cam.oy, target.oy, f) };
     }
 
-    ctx.clearRect(0, 0, W, H);
+    drawPaper(ctx, W, H);
     drawLeft(PL, state.cam);
     drawRight(PR);
 
-    // Divider
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = COLORS.ink;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     if (PR.x > 0) {
-      ctx.moveTo(PR.x + 0.5, 16);
-      ctx.lineTo(PR.x + 0.5, H - 16);
+      ctx.moveTo(PR.x + 0.5, 0);
+      ctx.lineTo(PR.x + 0.5, H);
     } else {
-      ctx.moveTo(16, PR.y + 0.5);
-      ctx.lineTo(W - 16, PR.y + 0.5);
+      ctx.moveTo(0, PR.y + 0.5);
+      ctx.lineTo(W, PR.y + 0.5);
     }
     ctx.stroke();
   }
@@ -332,81 +302,85 @@ export function mountPythagoras(root) {
     state.touched = true;
   }
 
-  function update(dt) {
-    if (state.target !== null) {
-      const dir = Math.sign(state.target - state.t);
-      state.t = clamp(state.t + dir * dt * 0.4, 0, 1);
-      if (state.t === state.target) state.target = null;
-    }
-
-    const { a, b, t } = state;
-    const c = Math.hypot(a, b);
-    set('a', fmt(a, 1));
-    set('b', fmt(b, 1));
-    set('aVal', fmt(a, 1));
-    set('bVal', fmt(b, 1));
-    set('a2', fmt(a * a, 2));
-    set('b2', fmt(b * b, 2));
-    set('c2', fmt(c * c, 2));
-    set('c', fmt(c, 3));
-    if (document.activeElement !== inputA) inputA.value = String(a);
-    if (document.activeElement !== inputB) inputB.value = String(b);
-    if (document.activeElement !== proofInput) proofInput.value = String(t);
-    const label = (state.target ?? (t < 0.5 ? 0 : 1)) === 1 ? 'Reset' : 'Rearrange';
-    if (rearrangeBtn.dataset.label !== label) {
-      rearrangeBtn.dataset.label = label;
-      rearrangeBtn.querySelector('span').textContent = label;
-    }
-
-    challenges.check({ a, b, c, t, touched: state.touched });
-  }
-
-  // Controls
-  inputA.addEventListener('input', () => setLegs(Number(inputA.value), state.b));
-  inputB.addEventListener('input', () => setLegs(state.a, Number(inputB.value)));
-  proofInput.addEventListener('input', () => {
-    state.target = null;
-    state.t = Number(proofInput.value);
-  });
-  rearrangeBtn.addEventListener('click', () => {
-    const goingTo = state.target ?? (state.t < 0.5 ? 0 : 1);
-    state.target = goingTo === 1 ? 0 : 1;
-  });
-
   // Drag the triangle's corners in the left panel
   function handleAt(p) {
     const cam = state.cam;
     if (!cam) return null;
-    const A = [cam.ox + state.a * cam.k, cam.oy];
-    const B = [cam.ox, cam.oy - state.b * cam.k];
-    const dA = Math.hypot(p.x - A[0], p.y - A[1]);
-    const dB = Math.hypot(p.x - B[0], p.y - B[1]);
+    const dA = Math.hypot(p.x - (cam.ox + state.a * cam.k), p.y - cam.oy);
+    const dB = Math.hypot(p.x - cam.ox, p.y - (cam.oy - state.b * cam.k));
     if (Math.min(dA, dB) > 22) return null;
     return dA <= dB ? 'a' : 'b';
   }
-  canvas.addEventListener('pointerdown', (e) => {
-    const key = handleAt(pointerPos(canvas, e));
-    if (!key) return;
-    state.drag = key;
-    canvas.setPointerCapture(e.pointerId);
-  });
-  canvas.addEventListener('pointermove', (e) => {
-    const p = pointerPos(canvas, e);
-    if (state.drag) {
-      const cam = state.cam;
-      if (state.drag === 'a') setLegs((p.x - cam.ox) / cam.k, state.b);
-      else setLegs(state.a, (cam.oy - p.y) / cam.k);
-      return;
-    }
-    state.hover = handleAt(p);
-    canvas.style.cursor = state.hover ? 'grab' : 'default';
-  });
-  const end = () => (state.drag = null);
-  canvas.addEventListener('pointerup', end);
-  canvas.addEventListener('pointercancel', end);
+  if (!preview) {
+    shell.on('pointerdown', (e) => {
+      const key = handleAt(pointerPos(canvas, e));
+      if (!key) return;
+      state.drag = key;
+      canvas.setPointerCapture(e.pointerId);
+    });
+    shell.on('pointermove', (e) => {
+      const p = pointerPos(canvas, e);
+      if (state.drag) {
+        const cam = state.cam;
+        if (state.drag === 'a') setLegs((p.x - cam.ox) / cam.k, state.b);
+        else setLegs(state.a, (cam.oy - p.y) / cam.k);
+        return;
+      }
+      state.hover = handleAt(p);
+      canvas.style.cursor = state.hover ? 'grab' : 'default';
+    });
+    const end = () => (state.drag = null);
+    shell.on('pointerup', end);
+    shell.on('pointercancel', end);
+  }
 
-  runWhenVisible(canvas, (dt) => {
-    update(dt);
-    draw(dt);
-  });
+  shell.start();
+
+  const heading = () => state.target ?? (state.t < 0.5 ? 0 : 1);
+  const controls = [
+    {
+      id: 'rearrange', kind: 'button', primary: true,
+      label: () => (heading() === 1 ? 'Put back' : 'Rearrange'),
+      press: () => (state.target = heading() === 1 ? 0 : 1),
+    },
+    {
+      id: 'proof', kind: 'range', label: 'proof', min: 0, max: 1, step: 0.001,
+      value: () => state.t,
+      display: () => `${Math.round(state.t * 100)}%`,
+      set: (v) => {
+        state.target = null;
+        state.t = v;
+      },
+    },
+    {
+      id: 'a', kind: 'range', label: 'leg a', min: MIN, max: MAX, step: 0.1,
+      value: () => state.a, display: () => fmt(state.a, 1),
+      set: (v) => setLegs(v, state.b),
+    },
+    {
+      id: 'b', kind: 'range', label: 'leg b', min: MIN, max: MAX, step: 0.1,
+      value: () => state.b, display: () => fmt(state.b, 1),
+      set: (v) => setLegs(state.a, v),
+    },
+  ];
+
+  return {
+    state,
+    controls,
+    header: () => {
+      const { a, b } = state;
+      const c = Math.hypot(a, b);
+      return `a² + b² = <b>${fmt(a * a, 2)}</b> + <b>${fmt(b * b, 2)}</b> = <b>${fmt(c * c, 2)}</b> · c = <b>${fmt(c, 3)}</b>`;
+    },
+    preset: (p = {}) => {
+      if ('a' in p) state.a = p.a;
+      if ('b' in p) state.b = p.b;
+      if ('t' in p) {
+        state.t = p.t;
+        state.target = null;
+      }
+      state.touched = false;
+    },
+    destroy: shell.destroy,
+  };
 }
